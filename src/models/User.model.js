@@ -28,29 +28,29 @@ const userSchema = new Schema({
         index:true
     },
     avatar:{
-        type:string, //cloudinary:url
+        type:String, //cloudinary:url
         required:true
     },
     coverImage:{
-        type:true,
+        type:String,
     },
     watchHistory:{
         type:Schema.Types.ObjectId,
         ref:"Video"
     },
     password:{
-        type:string,
+        type:String,
         required:[true,'Password is required']
     },
     refreshTokens:{
-        type:string
+        type:String
     }
 
 },
 {
     timestamps:true
 })
-userSchema.pre("save",async function (next){
+await userSchema.pre("save",async function (next){
     if(!this.isModified("password")) return next();
     this.password=bcrypt.hash(this.password,10)
     next()

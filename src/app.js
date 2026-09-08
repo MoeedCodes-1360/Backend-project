@@ -1,6 +1,7 @@
-import { express } from 'express';
+import  express  from 'express';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
+
 const app = express();
 app.use(cors(
   // to allow frontend to access backend
@@ -17,7 +18,10 @@ app.use(express.urlencoded({extended:true,limit:"16kb"}));
 app.use(cookieParser());
 // to serve static files
 app.use(express.static('public'));
+//routes
 
+import userRouter from './routes/user.routes.js';
+app.use("/api/v1/users",userRouter)
 
 export { app }
 

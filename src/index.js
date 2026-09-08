@@ -1,5 +1,6 @@
 import  connection from "./db/index.js";
-
+// import express from "express";
+import { app } from "./app.js";
 import "dotenv/config";
 
 
