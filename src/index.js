@@ -5,16 +5,24 @@ import "dotenv/config";
 
 
 
+
 connection()
 .then(() => {
   app.listen(process.env.PORT, () => {
     console.log(`Server is running on port ${process.env.PORT}`);
+
   });
 })
 .catch((err) => {
   console.error("Error connecting to the database:", err);
   process.exit(1);
 });
+// app.get("/hey",(req,res)=>{
+//   // console.log("req:",req);
+//   // console.log("res:",res);
+  
+//   res.send("<h1>hey</h1>")
+// })
 
 
 
