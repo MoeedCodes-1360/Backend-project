@@ -84,7 +84,7 @@ if(!avatar){    throw new apiError(400,"upload failed");
 })
 const loginUser=asynchandler(async(req,res)=>{
     const {email,userName,password}=req.body
-    if (!email || !userName) {
+    if (!(email || userName)) {
         throw new apiError(400, "Email or Username is required");
     }
     if (!password) {
@@ -126,11 +126,11 @@ const logOutUser=asynchandler(async (req,res)=>{
         {
             new:true
         }
-    ),
-    const options={
+    )
+const options= {
         httpOnly:true,
         secure:true
-    }
+     }
     res.status(200)
     .clearCookie("accessToken",options)
     .clearCookie("refreshToken",options)
