@@ -224,7 +224,7 @@ const updateUserAvatar = asynchandler(async (req, res) => {
         avatar: avatar.url,
       },
     },
-    { new: True }
+    { new: true }
   ).select("-password");
 
   return res
@@ -248,7 +248,7 @@ const updateUserCoverImage = asynchandler(async (req, res) => {
         coverImage: coverImage.url,
       },
     },
-    { new: True }
+    { new: true }
   ).select("-password");
 
   return res
