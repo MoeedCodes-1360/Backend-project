@@ -3,6 +3,7 @@ import { apiError } from "../utils/apiError.js";
 import { User } from "../models/User.model.js";
 import { uploadImageCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+import { jwt } from 'jsonwebtoken';
 // first, get userData from form(we'll take from postman for now)
 //check if data is correct and valid(according to requirements)
 //if image present, upload it in cloudinary
@@ -137,7 +138,43 @@ const options= {
     .json(new ApiResponse(200,{},"User Logged out"))
     
 })
+const refreshAccessToken=asynchandler(async (req,res)=>{
+const incomingRefreshToken=req.cookies.refreshToken || req.body.refreshToken
+if(!incomingRefreshToken){
+    throw new apiError(401,"UnAuthorized Request")
+}
+try {
+    const decodedToken =  jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET);
+    const user=await User.findById(decodedToken?._id)
+    if(!user){
+        throw new apiError(401,"UnAuthorized User Request")
+    }
+    if(incomingRefreshToken !== user?.refreshToken){
+        throw new apiError(401,"Refresh Token is expired or used")
+    }
+    const options={
+        httpOnly:true,
+        secure:true
+    }
+    const {accessToken,newRefreshToken}=await generateAccessAndRefreshToken(user._id)
+    return res
+    .status(200)
+    .cookie("access Token:",accessToken)
+    .cookie("refresh Token",newRefreshToken)
+    .json(
+        new ApiResponse(
+            200,
+            {accessToken,refreshToken},
+            "Access Token Refreshed"
+        )
+    )
+} catch (error) {
+    throw new apiError(401,error?.message||"Service error:")
+    
+}
 
+})
 export {registerUser,
-    loginUser,logOutUser
+    loginUser,logOutUser,
+    refreshAccessToken
 }
