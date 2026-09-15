@@ -11,10 +11,10 @@ const connection = async () => {
     // console.log("url loaded:",!!process.env.MONGODB_URI);
     
    const connectionInstance = await mongoose.connect(`${process.env.MONGODB_URI}/${DB_NAME}`);
-   console.log("mongoDb Connected: ",connectionInstance.connection.host, connectionInstance.connection.port);
+  //  console.log("mongoDb Connected: ",connectionInstance.connection.host, connectionInstance.connection.port);
 
-   console.log("Database:", mongoose.connection.name);
-console.log("Host:", mongoose.connection.host);
+  //  console.log("Database:", mongoose.connection.name);
+// console.log("Host:", mongoose.connection.host);
   } catch (error) {
     console.error("DB error: ", error);
     process.exit(1);

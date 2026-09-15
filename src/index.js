@@ -1,7 +1,7 @@
+import "dotenv/config";
 import  connection from "./db/index.js";
 // import express from "express";
 import { app } from "./app.js";
-import "dotenv/config";
 
 
 
@@ -17,12 +17,7 @@ connection()
   console.error("Error connecting to the database:", err);
   process.exit(1);
 });
-// app.get("/hey",(req,res)=>{
-//   // console.log("req:",req);
-//   // console.log("res:",res);
-  
-//   res.send("<h1>hey</h1>")
-// })
+
 
 
 
