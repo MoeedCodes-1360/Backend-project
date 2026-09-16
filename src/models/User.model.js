@@ -67,7 +67,7 @@ userSchema.methods.generateAccessToken=function(){
         userName:this.userName,
         fullName:this.fullName
     },process.env.ACCESS_TOKEN_SECRET,
-process.env.ACCESS_TOKEN_EXPIRY
+{expiresIn:process.env.ACCESS_TOKEN_EXPIRY}
 )
 }
 userSchema.methods.generateRefreshToken=function(){
@@ -77,7 +77,7 @@ userSchema.methods.generateRefreshToken=function(){
         username:this.username,
         Fullname:this.fullName
     },process.env.REFRESH_TOKEN_SECRET,
-process.env.REFRESH_TOKEN_EXPIRY
+{expiresIn:process.env.REFRESH_TOKEN_EXPIRY}
 )
 }
 

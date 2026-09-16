@@ -4,19 +4,28 @@ import { User } from "../models/User.model.js";
 import { uploadImageCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import  jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 
 const generateAccessAndRefreshToken = async (userId) => {
   try {
     const user = await User.findById(userId);
-    const AccessToken = user.generateAccessToken();
+
+    // Access tokens are short-lived; refresh tokens keep the user signed in longer.
+    const accessToken = user.generateAccessToken();
     const refreshToken = user.generateRefreshToken();
 
+    // Save the refresh token so later refresh requests can be verified.
     user.refreshToken = refreshToken;
     await user.save({ validateBeforeSave: false });
+    // console.log(accessToken,refreshToken);
+
+    return { accessToken, refreshToken };
   } catch (error) {
+    console.log("Token error:",error);
+
     throw new apiError(500, "Something went wrong while generating tokens");
   }
-  return { AccessToken, refreshToken };
+
 };
 const registerUser = asynchandler(async (req, res) => {
   const { fullName, email, userName, password } = req.body;
@@ -68,6 +77,8 @@ const registerUser = asynchandler(async (req, res) => {
     .json(new ApiResponse(200, createdUser, "User registered successfully"));
 });
 const loginUser = asynchandler(async (req, res) => {
+  console.log("Login body:",req.body);
+
   const { email, userName, password } = req.body;
   if (!(email || userName)) {
     throw new apiError(400, "Email or Username is required");
@@ -88,12 +99,14 @@ const loginUser = asynchandler(async (req, res) => {
   const { accessToken, refreshToken } = await generateAccessAndRefreshToken(
     user._id
   );
-  loggedInUser = await User.findById(user._id).select(
+  const loggedInUser = await User.findById(user._id).select(
     "-password -refreshToken"
   );
-  options = {
+  const options = {
     httpOnly: true,
-    secure: true,
+    secure: process.env.NODE_ENV === "production",
+    // Local development uses HTTP; production uses cross-site secure cookies.
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
   };
   return res
     .status(200)
@@ -123,7 +136,8 @@ const logOutUser = asynchandler(async (req, res) => {
   );
   const options = {
     httpOnly: true,
-    secure: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
   };
   res
     .status(200)
@@ -132,44 +146,54 @@ const logOutUser = asynchandler(async (req, res) => {
     .json(new ApiResponse(200, {}, "User Logged out"));
 });
 const refreshAccessToken = asynchandler(async (req, res) => {
-  const incomingRefreshToken =
-    req.cookies.refreshToken || req.body.refreshToken;
+  // Prefer a token sent explicitly in the body, then fall back to the cookie.
+  const incomingRefreshToken =req.cookies?.refreshToken ||
+    req.body?.refreshToken  ;
   if (!incomingRefreshToken) {
-    throw new apiError(401, "UnAuthorized Request");
+    throw new apiError(401, "Unauthorized request");
   }
+
+  
   try {
+    // This checks the signature and expiry before the token is used.
     const decodedToken = jwt.verify(
       incomingRefreshToken,
       process.env.REFRESH_TOKEN_SECRET
     );
-    const user = await User.findById(decodedToken?._id);
-    if (!user) {
-      throw new apiError(401, "UnAuthorized User Request");
-    }
-    if (incomingRefreshToken !== user?.refreshToken) {
-      throw new apiError(401, "Refresh Token is expired or used");
-    }
-    const options = {
-      httpOnly: true,
-      secure: true,
-    };
-    const { accessToken, newRefreshToken } =
-      await generateAccessAndRefreshToken(user._id);
-    return res
-      .status(200)
-      .cookie("access Token:", accessToken)
-      .cookie("refresh Token", newRefreshToken)
-      .json(
-        new ApiResponse(
-          200,
-          { accessToken, refreshToken },
-          "Access Token Refreshed"
-        )
-      );
-  } catch (error) {
-    throw new apiError(401, error?.message || "Service error:");
+    const user = await User.findById(decodedToken._id);
+  if (!user) {
+    throw new apiError(401, "Invalid refresh token");
   }
-});
+
+  // Only the refresh token saved for this user can create a new access token.
+  if (incomingRefreshToken !== user.refreshToken) {
+    throw new apiError(401, "Refresh token is expired or already used");
+  }
+
+  // Refreshing creates a new access token but keeps the refresh token unchanged.
+  const {accessToken,newRefreshToken} = await generateAccessAndRefreshToken(user._id);
+  const options = {
+    httpOnly: true,
+    secure: true
+  };
+
+  return res
+    .status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken",newRefreshToken)
+    .json(
+      new ApiResponse(
+        200,
+        { accessToken },
+        "Access token refreshed successfully"
+      ))}
+     catch (error) {
+    throw new apiError(401, "Invalid or expired refresh token");
+  }})
+
+  
+
+  
 const changeCurrentPassword = asynchandler(async (req, res) => {
   const { oldPassword, newPassword } = req.body;
   const user = await User.findById(req.user?._id);
@@ -193,7 +217,8 @@ const updateAccountDetails = asynchandler(async (req, res) => {
   if (!fullName || !email) {
     throw new apiError(400, "All fields are required");
   }
-  const user = User.findByIdAndUpdate(
+  // Return the updated document instead of the old version.
+  const user = await User.findByIdAndUpdate(
     req.user?._id,
     {
       $set: {
@@ -201,7 +226,7 @@ const updateAccountDetails = asynchandler(async (req, res) => {
         email: email,
       },
     },
-    { new: True }
+    { new: true }
   ).select("-password");
   return res
     .status(200)
@@ -210,6 +235,8 @@ const updateAccountDetails = asynchandler(async (req, res) => {
 
 const updateUserAvatar = asynchandler(async (req, res) => {
   const avatarLocalPath = req.file?.path;
+  
+  
   if (!avatarLocalPath) {
     throw new apiError(400, "Avatar file is missing");
   }
@@ -225,7 +252,7 @@ const updateUserAvatar = asynchandler(async (req, res) => {
       },
     },
     { new: true }
-  ).select("-password");
+  ).select("-password -refreshToken");
 
   return res
     .status(200)
@@ -263,8 +290,9 @@ const getUserChannelProfile = asynchandler(async (req, res) => {
   }
   const channel = await User.aggregate([
     {
+      // The schema uses userName with a capital N, so match that exact field.
       $match: {
-        username: username?.toLowerCase(),
+        userName: username?.toLowerCase(),
       },
     },
     {
@@ -286,10 +314,10 @@ const getUserChannelProfile = asynchandler(async (req, res) => {
     {
       $addFields: {
         subscriptionCount: {
-          $size: "subscribers",
+          $size: "$subscribers",
         },
         channelSubscribedtoCount: {
-          $size: "subscribed",
+          $size: "$subscribed",
         },
         isubscribed: {
           $cond: {
@@ -304,7 +332,7 @@ const getUserChannelProfile = asynchandler(async (req, res) => {
     {
       $project: {
         fullName: 1,
-        username: 1,
+        userName: 1,
         subscriptionCount: 1,
         channelSubscribedtoCount: 1,
         avatar: 1,
@@ -322,6 +350,7 @@ const getUserChannelProfile = asynchandler(async (req, res) => {
     .json(new ApiResponse(200,channel, "channel found successfully"));
 });
 const getWatchHistory=asynchandler(async (req,res)=>{
+  // Convert the authenticated user's id into the ObjectId MongoDB expects.
     const user= await User.aggregate([
         {
             $match:{
@@ -348,14 +377,17 @@ const getWatchHistory=asynchandler(async (req,res)=>{
                             }
                         }]
                     }
-                }]
+                },
+                {
+                    $addFields:{
+                          owner:{
+
+                        $first:"$owner",
+                    }}
+                }
+              ]
             }
         },
-        {
-            $addFields:{
-                $first:"$owner",
-            }
-        }
     ])
 return res
 .status(200)
