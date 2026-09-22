@@ -8,7 +8,7 @@ cloudinary.config({
     cloud_name: process.env.CL_PROJECT_NAME
 })
 
-// import { log } from 'console';
+
 import fs from 'fs';
 //we got link from url while cloudinary holds our files
  export const uploadImageCloudinary= async (filePath)=>{ 
@@ -22,11 +22,13 @@ import fs from 'fs';
         
         
     } catch (error) {
-        fs.unlinkSync(filePath) //remove locally save files only when it fails
+        fs.unlinkSync(filePath) 
         return error
         
     }
 }
+
+
 
 
 
