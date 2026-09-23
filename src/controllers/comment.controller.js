@@ -47,7 +47,7 @@ const updateComment = asynchandler(async (req, res) => {
   const { commentId } = req.params;
   const { content } = req.body;
 
-  if (!isValidObjectId(videoId)) {
+  if (!isValidObjectId(commentId)) {
     throw new apiError(404, "Invalid id");
   }
   if (!content || content.trim() === "") {
@@ -61,10 +61,9 @@ const updateComment = asynchandler(async (req, res) => {
     commentId,
     {
       $set: {
-        commentId,
-        owner,
-        content: content,
-        video,
+        
+        content
+        
       },
     },
     { new: true }
@@ -76,14 +75,13 @@ const updateComment = asynchandler(async (req, res) => {
 });
 const deleteComment = asynchandler(async (req, res) => {
   const { commentId } = req.params;
-  const { content } = req.body;
+  
 
-  if (!isValidObjectId(videoId)) {
+  if (!isValidObjectId(commentId)) {
     throw new apiError(404, "Invalid id");
   }
-  if (!content || content.trim() === "") {
-    throw new apiError(403, "No content to be updated");
-  }
+  
+  
   const comment = await Comment.findById(commentId);
   if (comment.owner.toString() !== req.user._id.toString()) {
     throw new apiError(403, "Cant update this comment");

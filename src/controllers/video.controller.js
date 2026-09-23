@@ -111,7 +111,7 @@ const publishAVideo = asynchandler(async (req, res) => {
     duration: videoFile?.duration,
     owner: req.user._id,
   });
-  const createdVideo = Video.findById(video._id);
+  const createdVideo = await Video.findById(video._id);
   if (!createdVideo) {
     throw new apiError(500, "Video upload failed");
   }
